@@ -1,0 +1,25 @@
+<RCC>
+    <qresource prefix="/qss">
+        <file>AMOLED.qss</file>
+        <file>darkstyle.qss</file>
+        <file>MacOS.qss</file>
+        <file>ManjaroMix.qss</file>
+        <file>MaterialDark.qss</file>
+        <file>init.qss</file>
+    </qresource>
+    <qresource prefix="/icon">
+        <file>img/ECGicon.png</file>
+        <file>img/Tempicon.png</file>
+        <file>img/TCP.png</file>
+        <file>img/config.png</file>
+        <file>img/icon3.png</file>
+        <file>img/icon4.png</file>
+        <file>img/icon1.png</file>
+        <file>img/icon2.png</file>
+        <file>img/open.png</file>
+        <file>img/hhicon.png</file>
+        <file>img/ECGgif.gif</file>
+        <file>img/close.png</file>
+        <file>img/Raingif.gif</file>
+    </qresource>
+</RCC>
