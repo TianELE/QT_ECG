@@ -9,6 +9,7 @@
 #include <QDebug>
 
 
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -18,6 +19,11 @@ MainWindow::MainWindow(QWidget *parent)
 //    tcpServer = new QTcpServer();//创建tcp服务端
 //    tcpSocket = new QTcpSocket();
 
+//    Thread_1 = new QThread;
+//    Thread_class = new Thread;
+
+    QTimer *ECG_time = new QTimer(this);
+
     ECG_chart_init();
     ui->label_client_ip->setText("无设备连接:-(");
 
@@ -26,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
     time_timer->start(1000); //每隔1000ms发送timeout的信号
     ui->statusbar->addWidget(currentTimeLabel);
     connect(time_timer, &QTimer::timeout,this,&MainWindow::time_update);
+    connect(ECG_time,&QTimer::timeout,this,&MainWindow::TimeoutECG);
 
     set_IP_PORT();
 
@@ -141,6 +148,9 @@ void MainWindow::SlotNewConnection()
 //        QMessageBox::information(this,"提示","客户端连接成功");
         connect(tcpSocket,SIGNAL(disconnected()),this,SLOT(ServerDisConnection()));
         connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(Read_data()));
+//        connect(this,&MainWindow::ToThread,Thread_class,&Thread::Thread_Fun);
+//        Thread_class->moveToThread(Thread_1);
+//        Thread_1->start();
     }
 }
 
@@ -181,10 +191,41 @@ void MainWindow::on_pushButton_connect_tcp_clicked()
 void MainWindow::Read_data()
 {
     QByteArray buffer;
+    QStringList origin_datalist;
     buffer = tcpSocket->readAll();
     if(!buffer.isEmpty())
     {
-        qDebug()<<tr(buffer);
+//        qDebug()<<tr(buffer);
+        origin_datalist = tr(buffer).split(":");
+        while(!origin_datalist.isEmpty())
+        {
+            if(origin_datalist.at(0)=="AD")
+            {
+                ECG_data.append(origin_datalist.at(1).toInt());
+                origin_datalist.removeFirst();
+                origin_datalist.removeFirst();
+            }
+            else if(origin_datalist.at(0)=="TEMP")
+            {
+                TEMP_data.append(origin_datalist.at(1).toFloat());
+                origin_datalist.removeFirst();
+                origin_datalist.removeFirst();
+            }
+            else
+            {
+                origin_datalist.removeFirst();
+            }
+            for(int i = 0;i<ECG_data.size();i++){
+                qDebug()<<ECG_data.at(i);
+            }
+            for(int i = 0;i<TEMP_data.size();i++){
+                qDebug()<<TEMP_data.at(i);
+            }
+
+            ECG_data.clear();
+            TEMP_data.clear();
+        }
+
     }
 }
 
@@ -267,5 +308,10 @@ void MainWindow::ECG_chart_init()
     ECG_chart->legend()->hide();
     ECG_chart->setBackgroundVisible(false);
     ui->ECG_LineChart->setChart(ECG_chart);
+
+}
+
+void MainWindow::TimeoutECG()
+{
 
 }
