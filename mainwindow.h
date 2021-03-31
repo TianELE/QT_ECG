@@ -24,14 +24,11 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    QList<int> ECG_data;
-    QList<float> TEMP_data;
-
     void loadStyleSheet(const QString &styleSheetFile);
     void time_update(); //时间更新槽函数，状态栏显示时间
     void tcp_init();
     void set_IP_PORT();
-    void ECG_chart_init();
+//    void ECG_chart_init();
 
 private slots:
     void on_pushButton_clicked();
@@ -60,20 +57,19 @@ private slots:
 
     void on_spinBox_Port_valueChanged(int arg1);
 
-    void TimeoutECG();
 
-//signals:
-//    void ToThread();
+signals:
+    void ToThread();
 
 private:
     Ui::MainWindow *ui;
-    QLabel *currentTimeLabel; // 先创建一个QLabel对象
+    QLabel *currentTimeLabel;
     QTcpServer *tcpServer;
     QTcpSocket *tcpSocket;
-    QValueAxis *ECG_axisY;
-    QValueAxis *ECG_axisX;
-    QLineSeries *ECG_line;
-    QChart *ECG_chart;
+//    QValueAxis *ECG_axisY;
+//    QValueAxis *ECG_axisX;
+//    QLineSeries *ECG_line;
+//    QChart *ECG_chart;
     QThread *Thread_1;
     Thread *Thread_class;
 

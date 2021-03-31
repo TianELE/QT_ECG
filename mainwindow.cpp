@@ -8,7 +8,8 @@
 #include <QMovie>
 #include <QDebug>
 
-
+extern  QList<int> ECG_data;
+extern  QList<float> TEMP_data;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -19,12 +20,17 @@ MainWindow::MainWindow(QWidget *parent)
 //    tcpServer = new QTcpServer();//创建tcp服务端
 //    tcpSocket = new QTcpSocket();
 
-//    Thread_1 = new QThread;
-//    Thread_class = new Thread;
+    Thread_1 = new QThread;
+    Thread_class = new Thread;
 
-    QTimer *ECG_time = new QTimer(this);
+    Thread_class->ECGchart = ui->ECG_LineChart;
+    Thread_class->TempLable = ui->label_temp;
+    Thread_class->ECG_chart_init();
 
-    ECG_chart_init();
+//    QTimer *ECG_time = new QTimer(this);
+//    ECG_time->start(20);
+//    connect(ECG_time, &QTimer::timeout,this,&MainWindow::ToThread);
+
     ui->label_client_ip->setText("无设备连接:-(");
 
     currentTimeLabel = new QLabel; // 创建QLabel控件
@@ -32,9 +38,10 @@ MainWindow::MainWindow(QWidget *parent)
     time_timer->start(1000); //每隔1000ms发送timeout的信号
     ui->statusbar->addWidget(currentTimeLabel);
     connect(time_timer, &QTimer::timeout,this,&MainWindow::time_update);
-    connect(ECG_time,&QTimer::timeout,this,&MainWindow::TimeoutECG);
 
     set_IP_PORT();
+
+//    emit ToThread();
 
 }
 
@@ -148,9 +155,9 @@ void MainWindow::SlotNewConnection()
 //        QMessageBox::information(this,"提示","客户端连接成功");
         connect(tcpSocket,SIGNAL(disconnected()),this,SLOT(ServerDisConnection()));
         connect(tcpSocket,SIGNAL(readyRead()),this,SLOT(Read_data()));
-//        connect(this,&MainWindow::ToThread,Thread_class,&Thread::Thread_Fun);
-//        Thread_class->moveToThread(Thread_1);
-//        Thread_1->start();
+        connect(this,&MainWindow::ToThread,Thread_class,&Thread::Thread_Fun);
+        Thread_class->moveToThread(Thread_1);
+        Thread_1->start();
     }
 }
 
@@ -215,16 +222,18 @@ void MainWindow::Read_data()
             {
                 origin_datalist.removeFirst();
             }
-            for(int i = 0;i<ECG_data.size();i++){
-                qDebug()<<ECG_data.at(i);
-            }
-            for(int i = 0;i<TEMP_data.size();i++){
-                qDebug()<<TEMP_data.at(i);
-            }
-
-            ECG_data.clear();
-            TEMP_data.clear();
+//            for(int i = 0;i<ECG_data.size();i++){
+//                qDebug()<<ECG_data.at(i);
+//            }
+//            for(int i = 0;i<TEMP_data.size();i++){
+//                qDebug()<<TEMP_data.at(i);
+//            }
         }
+        if(ECG_data.size()>=100)
+        {
+            emit ToThread();
+        }
+//        emit ToThread();
 
     }
 }
@@ -245,73 +254,17 @@ void MainWindow::set_IP_PORT()
     ui->label_local_ip->setText(ip_port);
 }
 
-void MainWindow::ECG_chart_init()
-{
-    ECG_axisY = new QValueAxis();
-    ECG_axisX = new QValueAxis();
-    ECG_line = new QLineSeries();
-    ECG_chart = new QChart();
-
-    ECG_chart->addSeries(ECG_line);//添加曲线到chart
-
-    ECG_axisX->setRange(-1500,3500);
-    ECG_axisY->setRange(0,100);
-    ECG_axisX->setTickCount(11);//主网格
-    ECG_axisX->setMinorTickCount(4);//次网格
-    ECG_axisY->setTickCount(6);
-    ECG_axisY->setMinorTickCount(4);
-
-    ECG_axisX->setTitleText("时间/ms");
-    ECG_axisX->setLabelFormat("%d");
-    ECG_axisX->setLabelsAngle(-45);
-    ECG_axisX->setLabelsColor(Qt::darkCyan);
-    QFont axisXfont = ECG_axisX->titleFont();
-    axisXfont.setPointSize(12);
-//    axisXfont.setBold(true);
-    ECG_axisX->setTitleFont(axisXfont);
-
-    ECG_axisY->setTitleText("幅值/%");
-    ECG_axisY->setLabelFormat("%d");
-    ECG_axisY->setLabelsAngle(-45);
-    ECG_axisY->setLabelsColor(Qt::darkCyan);
-    QFont axisYfont = ECG_axisY->titleFont();
-    axisYfont.setPointSize(12);
-    axisYfont.setBold(true);
-    ECG_axisY->setTitleFont(axisYfont);
-
-
-
-    ECG_axisX->setGridLinePen(QPen(Qt::darkGreen,2,Qt::DashDotDotLine,Qt::SquareCap,Qt::RoundJoin));
-    ECG_axisY->setGridLinePen(QPen(Qt::darkCyan,2,Qt::DashDotLine,Qt::SquareCap,Qt::RoundJoin));
-
-    ECG_axisX->setMinorGridLinePen(QPen(Qt::darkGreen,1,Qt::DotLine,Qt::SquareCap,Qt::RoundJoin));
-    ECG_axisY->setMinorGridLinePen(QPen(Qt::darkCyan,1,Qt::DotLine,Qt::SquareCap,Qt::RoundJoin));
-
-
-    ECG_axisX->setLinePen(QPen(Qt::darkCyan,3,Qt::SolidLine,Qt::SquareCap,Qt::RoundJoin));
-    ECG_axisY->setLinePen(QPen(Qt::darkCyan,3,Qt::SolidLine,Qt::SquareCap,Qt::RoundJoin));
-
-    ECG_axisX->setGridLineVisible(true);
-    ECG_axisY->setGridLineVisible(true);//显示线框
-
-    ECG_axisX->setLabelsVisible(true);
-    ECG_axisY->setLabelsVisible(true);//显示刻度数值
-
-    ECG_chart->addAxis(ECG_axisX,Qt::AlignBottom);
-    ECG_chart->addAxis(ECG_axisY,Qt::AlignLeft);
-
-    ECG_line->attachAxis(ECG_axisX);
-    ECG_line->attachAxis(ECG_axisY);
-    ECG_line->setColor(QColor(Qt::black));
-    ECG_line->setUseOpenGL(true);
-
-    ECG_chart->legend()->hide();
-    ECG_chart->setBackgroundVisible(false);
-    ui->ECG_LineChart->setChart(ECG_chart);
-
-}
-
-void MainWindow::TimeoutECG()
-{
-
-}
+//void MainWindow::TimeoutECG()
+//{
+//    if(!ECG_data.isEmpty()){
+//        ECG_cout += 8;
+//        if(ECG_cout>5000) ECG_cout = 0;
+//        ECG_line->append(QPointF(ECG_cout%5000,(ECG_data.at(0)/4092*100)));
+//        ECG_data.removeFirst();
+//    }
+//    if(!TEMP_data.isEmpty())
+//    {
+//        qDebug()<<TEMP_data.at(0);
+//        TEMP_data.removeFirst();
+//    }
+//}
