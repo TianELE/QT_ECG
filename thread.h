@@ -6,6 +6,7 @@
 #include <QList>
 #include <QtCharts>
 #include <QPen>
+#include <stdio.h>
 
 
 class Thread :public QObject
@@ -21,18 +22,27 @@ public:
     float Temp_sum;
 
     QChartView *ECGchart;
-    QLabel *TempLable;
+    QLabel *TempLabel;
+    QLabel *ECGBPMLabel;
+    QLabel *ECGcacheLabel;
+    QLineEdit *outPath_lineEdit;
 
     void Thread_Fun(void);
     void ECG_chart_init();
     float filter_low_35(float inputValue);
     float filter_low_25(float inputValue);
-    float filter_high_1(float inputValue);
+    float filter_high_0_67(float inputValue);
+    void find_maxValue(float intputValue);
+    void Get_R(int inputTime,float intputValue);
 
 private:
     QValueAxis *ECG_axisY;
     QValueAxis *ECG_axisX;
     QLineSeries *ECG_line;
+    QLineSeries *ECG_MAX_line;
+
+    FILE *fileout;
+
     QChart *ECG_chart;
 };
 

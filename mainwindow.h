@@ -9,6 +9,8 @@
 #include <QtCharts>
 #include <QPen>
 #include <QList>
+#include <QProcess>
+#include <QDesktopServices>
 #include "thread.h"
 
 QT_BEGIN_NAMESPACE
@@ -26,12 +28,12 @@ public:
 
     void loadStyleSheet(const QString &styleSheetFile);
     void time_update(); //时间更新槽函数，状态栏显示时间
+    void _init();
     void tcp_init();
     void set_IP_PORT();
 //    void ECG_chart_init();
 
 private slots:
-    void on_pushButton_clicked();
 
     void on_actionMacOS_triggered();
 
@@ -57,6 +59,18 @@ private slots:
 
     void on_spinBox_Port_valueChanged(int arg1);
 
+
+    void on_pushButton_connect_tcp_2_clicked();
+
+    void on_checkBox_isOUT_stateChanged(int arg1);
+
+    void on_Button_setOUT_clicked();
+
+    void on_pushButton_startOUT_clicked();
+
+    void on_pushButton_openWave_clicked();
+
+    void on_pushButton_openFile_clicked();
 
 signals:
     void ToThread();

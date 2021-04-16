@@ -7,9 +7,14 @@
 #include <QString>
 #include <QMovie>
 #include <QDebug>
+#include<iostream>
+using namespace std;
 
 extern  QList<int> ECG_data;
 extern  QList<float> TEMP_data;
+extern uint8_t ECG_Thread_isRun;
+extern int ECG_BPM_TO_client,ECG_BPM_SEND_FLAG,isOutFlag;
+static QString ECG_BPM_OUT;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -24,14 +29,17 @@ MainWindow::MainWindow(QWidget *parent)
     Thread_class = new Thread;
 
     Thread_class->ECGchart = ui->ECG_LineChart;
-    Thread_class->TempLable = ui->label_temp;
+    Thread_class->TempLabel = ui->label_temp;
+    Thread_class->ECGBPMLabel = ui->label_bpm;
+    Thread_class->ECGcacheLabel = ui->label_ECG_cache;
+    Thread_class->outPath_lineEdit = ui->lineEdit_pathOUT;
     Thread_class->ECG_chart_init();
 
 //    QTimer *ECG_time = new QTimer(this);
 //    ECG_time->start(20);
 //    connect(ECG_time, &QTimer::timeout,this,&MainWindow::ToThread);
 
-    ui->label_client_ip->setText("无设备连接:-(");
+    _init();
 
     currentTimeLabel = new QLabel; // 创建QLabel控件
     QTimer *time_timer = new QTimer(this);
@@ -48,6 +56,25 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+    if(Thread_class!=nullptr)
+    {
+        if(Thread_1->isRunning())
+        {
+            qDebug("thread stop now");
+            Thread_1->quit();
+            Thread_1->wait();
+        }
+    }
+}
+
+void MainWindow::_init()
+{
+    ui->label_client_ip->setText("无设备连接:-(");
+    ui->label_client_ip_2->setText("无设备连接:-(");
+
+    ui->lineEdit_pathOUT->setEnabled(false);
+    ui->Button_setOUT->setEnabled(false);
+    ui->pushButton_startOUT->setEnabled(false);
 }
 
 void MainWindow::loadStyleSheet(const QString &styleSheetFile)
@@ -103,11 +130,6 @@ void MainWindow::on_actionNormal_triggered()
     this->loadStyleSheet(":/qss/init.qss");
 }
 
-void MainWindow::on_pushButton_clicked()
-{
-
-}
-
 
 void MainWindow::on_tabWidget_tabBarClicked(int index)
 {
@@ -135,6 +157,7 @@ void MainWindow::tcp_init()
     {
         connect(tcpServer,SIGNAL(newConnection()),this,SLOT(SlotNewConnection()));
         ui->pushButton_connect_tcp->setText("断开");
+        ui->pushButton_connect_tcp_2->setText("断开");
     }
 }
 
@@ -151,6 +174,7 @@ void MainWindow::SlotNewConnection()
         client_ip = client_ip+":"+client_port+" 已连接:-)";
         client_ip = client_ip.remove(0,7);
         ui->label_client_ip->setText(client_ip);
+        ui->label_client_ip_2->setText(client_ip);
         qDebug()<<client_ip;
 //        QMessageBox::information(this,"提示","客户端连接成功");
         connect(tcpSocket,SIGNAL(disconnected()),this,SLOT(ServerDisConnection()));
@@ -166,6 +190,14 @@ void MainWindow::ServerDisConnection()
     QMessageBox::information(this,"提示","客户端断开连接");
     tcpSocket->deleteLater();
     tcpServer->deleteLater();
+    if(ECG_Thread_isRun == 0)
+    {
+        while(!ECG_data.isEmpty())
+        {
+            ui->label_ECG_cache->setNum(ECG_data.size());
+        }
+        ui->label_ECG_cache->setNum(0);
+    }
     return;
 }
 
@@ -183,7 +215,37 @@ void MainWindow::on_pushButton_connect_tcp_clicked()
     else
     {
         ui->pushButton_connect_tcp->setText("连接");
+        ui->pushButton_connect_tcp_2->setText("连接");
         ui->label_client_ip->setText("无设备连接:-(");
+        ui->label_client_ip_2->setText("无设备连接:-(");
+        tcpServer->close();
+        tcpSocket->close();
+
+        ui->lineEdit_IP->setEnabled(true);
+        ui->lineEdit_wifi_id->setEnabled(true);
+        ui->lineEdit_wifi_pw->setEnabled(true);
+        ui->spinBox_Port->setEnabled(true);
+        ui->pushButton_push->setEnabled(true);
+
+    }
+}
+void MainWindow::on_pushButton_connect_tcp_2_clicked()
+{
+    if(ui->pushButton_connect_tcp_2->text() == tr("连接"))
+    {
+        tcp_init();
+        ui->lineEdit_IP->setEnabled(false);
+        ui->lineEdit_wifi_id->setEnabled(false);
+        ui->lineEdit_wifi_pw->setEnabled(false);
+        ui->spinBox_Port->setEnabled(false);
+        ui->pushButton_push->setEnabled(false);
+    }
+    else
+    {
+        ui->pushButton_connect_tcp->setText("连接");
+        ui->pushButton_connect_tcp_2->setText("连接");
+        ui->label_client_ip->setText("无设备连接:-(");
+        ui->label_client_ip_2->setText("无设备连接:-(");
         tcpServer->close();
         tcpSocket->close();
 
@@ -229,12 +291,30 @@ void MainWindow::Read_data()
 //                qDebug()<<TEMP_data.at(i);
 //            }
         }
-        if(ECG_data.size()>=100)
+//        if(Thread_1->isRunning()&&ECG_Thread_isRun == 0)
+//        {
+//            qDebug("running");
+//            Thread_1->quit();
+//            Thread_1->wait();
+//        }
+        if(ECG_data.size()<=150||ECG_data.size()>=300)
         {
+//            ECG_Thread_isRun = 1;
+//            Thread_1->start();
+            qDebug("starting");
             emit ToThread();
         }
 //        emit ToThread();
 
+    }
+    if(ECG_BPM_TO_client!=0&&ECG_BPM_SEND_FLAG == 1)
+    {
+       ECG_BPM_SEND_FLAG = 0;
+       ECG_BPM_OUT = QString("%1").arg(ECG_BPM_TO_client)+"\n";
+       tcpSocket->write(ECG_BPM_OUT.toLatin1(),ECG_BPM_OUT.toLatin1().size());
+       qDebug()<<ECG_BPM_OUT.toLatin1();
+       ECG_BPM_TO_client = 0;
+       ECG_BPM_OUT.clear();
     }
 }
 
@@ -252,6 +332,7 @@ void MainWindow::set_IP_PORT()
 {
     QString ip_port = ui->lineEdit_IP->text()+":"+ui->spinBox_Port->text();
     ui->label_local_ip->setText(ip_port);
+    ui->label_local_ip_2->setText(ip_port);
 }
 
 //void MainWindow::TimeoutECG()
@@ -268,3 +349,63 @@ void MainWindow::set_IP_PORT()
 //        TEMP_data.removeFirst();
 //    }
 //}
+
+
+void MainWindow::on_checkBox_isOUT_stateChanged(int arg1)
+{
+    if(arg1 == Qt::Checked)
+    {
+        ui->lineEdit_pathOUT->setEnabled(true);
+        ui->Button_setOUT->setEnabled(true);
+        ui->pushButton_startOUT->setEnabled(true);
+    }
+    else if(arg1 == Qt::Unchecked)
+    {
+        ui->lineEdit_pathOUT->setEnabled(false);
+        ui->Button_setOUT->setEnabled(false);
+        ui->pushButton_startOUT->setEnabled(false);
+    }
+}
+
+void MainWindow::on_Button_setOUT_clicked()
+{
+    QString outpath = QFileDialog::getExistingDirectory(this,"选择输出文件目录","./",QFileDialog::ShowDirsOnly);
+    ui->lineEdit_pathOUT->setText(outpath);
+}
+
+void MainWindow::on_pushButton_startOUT_clicked()
+{
+    if(ui->pushButton_startOUT->text() == tr("开始"))
+    {
+        ui->checkBox_isOUT->setEnabled(false);
+        ui->pushButton_startOUT->setText("停止");
+        ui->pushButton_connect_tcp->setEnabled(false);
+        ui->pushButton_connect_tcp_2->setEnabled(false);
+        ui->lineEdit_pathOUT->setEnabled(false);
+        ui->Button_setOUT->setEnabled(false);
+        isOutFlag = 1;
+    }
+    else if(ui->pushButton_startOUT->text() == tr("停止"))
+    {
+        ui->checkBox_isOUT->setEnabled(true);
+        ui->pushButton_startOUT->setText("开始");
+        ui->pushButton_connect_tcp->setEnabled(true);
+        ui->pushButton_connect_tcp_2->setEnabled(true);
+        ui->lineEdit_pathOUT->setEnabled(true);
+        ui->Button_setOUT->setEnabled(true);
+        isOutFlag = 0;
+    }
+}
+
+void MainWindow::on_pushButton_openWave_clicked()
+{
+    QProcess openEXE(this);
+    QString command = "./ECGSHOW/ECGWaveShow.exe";
+    openEXE.startDetached(command,QStringList());
+}
+
+void MainWindow::on_pushButton_openFile_clicked()
+{
+    QString dirpath = ui->lineEdit_pathOUT->text();
+    QDesktopServices::openUrl(QUrl("file:///"+dirpath));
+}
